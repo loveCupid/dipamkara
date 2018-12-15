@@ -1,8 +1,6 @@
 package kernal
 
 import (
-	"fmt"
-	// "log"
 	"net"
 	"strconv"
 	"sync"
@@ -16,6 +14,10 @@ import (
 	etcdnaming "github.com/coreos/etcd/clientv3/naming"
 )
 
+const (
+    Skey = "_server"
+)
+
 type Server struct {
 	name     string
 	Lis      net.Listener
@@ -24,6 +26,7 @@ type Server struct {
 	Addr     string
 	Svr      *grpc.Server
 	ss       sync.Map
+    logger   *Logger
 }
 
 func NewServer(name string) *Server {
@@ -46,15 +49,15 @@ func NewServer(name string) *Server {
 
 	s.Svr = grpc.NewServer(grpc.UnaryInterceptor(
 		func(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (resp interface{}, err error) {
-			fmt.Println("--------------------")
 			if s == nil {
 				panic("s == nil")
 			}
-			ctx = context.WithValue(ctx, name, s)
+			ctx = context.WithValue(ctx, Skey, s)
+			Debug(ctx, "--------------------")
 			return serverInterceptor(ctx, req, info, handler)
 		}))
 
-	fmt.Println(*s)
+    s.logger = NewLogger(name, "online")
 
 	return s
 }
@@ -64,22 +67,27 @@ func genServicePath(s string) string {
 }
 
 func serverInterceptor(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (resp interface{}, err error) {
-	fmt.Println("start server Interceptor")
+	Info(ctx, "start server Interceptor")
 	resp, err = handler(ctx, req)
-	fmt.Println("end server Interceptor######################3")
+	Debug(ctx, "end server Interceptor######################3")
 	return resp, err
 }
 func callerInterceptor(ctx context.Context, method string, req, reply interface{}, cc *grpc.ClientConn, invoker grpc.UnaryInvoker, opts ...grpc.CallOption) error {
-	fmt.Println("intercepter ", method, req, reply, *cc, invoker, opts)
+	Info(ctx, "intercepter ", method, req, reply, *cc, invoker, opts)
 	err := invoker(ctx, method, req, reply, cc, opts...)
 
-	fmt.Println("success intercepter!!!########################!")
+	Error(ctx, "success intercepter!!!########################!")
 
 	return err
 }
+
+func FetchServiceConnByCtx(ctx context.Context, name string) *grpc.ClientConn {
+    s := ctx.Value(Skey).(*Server)
+    return FetchServiceConn(name, s)
+}
+
 func FetchServiceConn(name string, s *Server) *grpc.ClientConn {
 	sp := genServicePath(name)
-	fmt.Println("sp: ", sp)
 
 	c, ok := s.ss.Load(sp)
 	if ok {
@@ -87,9 +95,13 @@ func FetchServiceConn(name string, s *Server) *grpc.ClientConn {
 	}
 
 	b := grpc.RoundRobin(s.Resolver)
-	conn, err := grpc.Dial(sp, grpc.WithBalancer(b), grpc.WithBlock(), grpc.WithInsecure(), grpc.WithUnaryInterceptor(callerInterceptor))
-	ErrorPanic(err)
-	s.ss.LoadOrStore(sp, conn)
+    conn, err := grpc.Dial(sp, grpc.WithBalancer(b), grpc.WithBlock(), grpc.WithInsecure(), grpc.WithUnaryInterceptor(
+        func (ctx context.Context, method string, req, reply interface{}, cc *grpc.ClientConn, invoker grpc.UnaryInvoker, opts ...grpc.CallOption) error {
+            ctx = context.WithValue(ctx, Skey, s)
+            return callerInterceptor(ctx, method, req, reply, cc, invoker, opts...)
+    }))
+    ErrorPanic(err)
+    s.ss.LoadOrStore(sp, conn)
 
 	return FetchServiceConn(name, s)
 }

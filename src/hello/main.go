@@ -2,22 +2,22 @@ package main
 
 // server.go
 
+/*
 import (
-    "fmt"
     "context"
-    "github.com/loveCupid/dipamkara/src/kernal"
+    . "github.com/loveCupid/dipamkara/src/kernal"
     pb "github.com/loveCupid/dipamkara/src/hello/proto"
 )
-
 type server struct {}
 
 func (s *server) SayHello(ctx context.Context, in *pb.HelloRequest) (*pb.HelloResponse, error) {
-    fmt.Printf("in.Greeting: %+v, server.addr: %+v\n", in.Greeting, ctx.Value("HelloServer").(*kernal.Server).Addr)
+    Debug(ctx, "in.Greeting: %+v, server.addr: %+v\n", in.Greeting, ctx.Value(Skey).(*Server).Addr)
     return &pb.HelloResponse{Reply: "Hello,tish.input: " + in.Greeting}, nil
 }
+*/
 
 func main() {
-
+    RunHelloService()
     /*ip := kernal.GetValidIP()
     port := kernal.GetValidPort(ip)
     fmt.Printf("get valid ip: %s, port: %d\n", ip, port)
@@ -33,10 +33,10 @@ func main() {
     if err != nil {
         log.Fatal("failed to listen: %v", err)
     }
-    s := grpc.NewServer()*/
-    s := kernal.NewServer("HelloServer")
+    s := grpc.NewServer()
+    s := NewServer("HelloServer")
     pb.RegisterHelloServiceServer(s.Svr, &server{})
-    s.Svr.Serve(s.Lis)
+    s.Svr.Serve(s.Lis)*/
 }
 
 

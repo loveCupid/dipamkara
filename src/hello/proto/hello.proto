@@ -7,9 +7,9 @@ message HelloRequest {
 
 message HelloResponse {
     string reply = 1;
-    repeated int32 number=4;
+    repeated int32 number = 2;
 }
 
 service HelloService {
-    rpc SayHello(HelloRequest) returns (HelloResponse){}
+    rpc SayHello(HelloRequest) returns (HelloResponse);
 }

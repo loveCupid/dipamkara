@@ -1,0 +1,6 @@
+syntax = "proto3";
+package kernal;
+
+message trace_point {
+    string name = 1;
+}
