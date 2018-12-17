@@ -59,6 +59,9 @@ func NewLogger(name string, env string) *Logger {
 	lgr.status = 0
 	lgr.buf_size = 9999
 
+    // Mkdir
+    os.Mkdir(prefix + name + "/", 0777)
+
 	{
 		// Debug item
 		lgr.debug = new(log_item)

@@ -1,0 +1,18 @@
+syntax = "proto3";
+package kernal;
+
+message HttpReq {
+    string service_name = 1;
+    string method       = 2;
+    string body         = 3;
+}
+
+message HttpRsp {
+    int32 code      = 1;
+    string msg      = 2;
+    string reply    = 3; // json string
+}
+
+service HttpService {
+    rpc Call(HttpReq) returns (HttpRsp);
+}

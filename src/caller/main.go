@@ -1,6 +1,7 @@
 package main
 
 import (
+    "fmt"
     // "os"
     // "time"
     "strconv"
@@ -13,17 +14,19 @@ import (
 
 func main() {
     ctx := context.Background()
+    s := NewServer("caller")
+	ctx = context.WithValue(ctx, Skey, s)
     
-    for i := 0; i < 99; i++{
+    for i := 0; i < 9; i++{
         name := "fish"
         name += "_"
         name += strconv.Itoa(i)
         // ctx = metadata.AppendToOutgoingContext(ctx, "k1", "v1", "k1", "v2", "k2", "v3")
         ctx = metadata.NewOutgoingContext(ctx, metadata.Pairs("traceid", name + "___withvalue"))
         // ctx = context.WithValue(ctx, metadata.Pairs("traceid", name + "___withvalue"))
-        _, err := pb.Call_HelloService_SayHello(ctx, &pb.HelloRequest{Greeting: name})
+        resp, err := pb.Call_HelloService_SayHello(ctx, &pb.HelloRequest{Greeting: name})
         ErrorPanic(err)
-        // Printf(ctx, "Greeting: %s\n", resp.Reply)
+        fmt.Printf("Greeting: %s\n", resp.Reply)
         // time.Sleep(100*time.Millisecond)
     }
 

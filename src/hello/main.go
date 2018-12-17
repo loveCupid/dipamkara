@@ -2,6 +2,12 @@ package main
 
 // server.go
 
+import (
+    "fmt"
+    "encoding/json"
+    pb "github.com/loveCupid/dipamkara/src/hello/proto"
+)
+
 /*
 import (
     "context"
@@ -17,6 +23,9 @@ func (s *server) SayHello(ctx context.Context, in *pb.HelloRequest) (*pb.HelloRe
 */
 
 func main() {
+    var t pb.HelloRequest
+    json.Unmarshal([]byte("{\"greeting\":\"77f888ff\"}"), &t)
+    fmt.Println("t: ", t)
     RunHelloService()
     /*ip := kernal.GetValidIP()
     port := kernal.GetValidPort(ip)

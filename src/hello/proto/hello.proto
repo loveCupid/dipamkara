@@ -10,6 +10,7 @@ message HelloResponse {
     repeated int32 number = 2;
 }
 
+// outside
 service HelloService {
     rpc SayHello(HelloRequest) returns (HelloResponse);
 }

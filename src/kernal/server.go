@@ -1,6 +1,7 @@
 package kernal
 
 import (
+    "fmt"
 	"net"
 	"strconv"
 	"sync"
@@ -27,12 +28,14 @@ type Server struct {
 	Svr      *grpc.Server
 	ss       sync.Map
     logger   *Logger
+    itct     *interceptors
 }
 
 func NewServer(name string) *Server {
 
 	s := new(Server)
 	s.name = name
+    s.itct = NewInterceptors(s)
 
 	var err error
 	ip := GetValidIP()
@@ -41,21 +44,25 @@ func NewServer(name string) *Server {
 	s.Lis, err = net.Listen("tcp", ip+":0")
 	ErrorPanic(err)
 	port := s.Lis.Addr().(*net.TCPAddr).Port
+    fmt.Println("listen addr: ", ip, ":", port)
 
 	s.Addr = ip + ":" + strconv.Itoa(port)
 	s.Etcd_cli, err = clientv3.NewFromURL("http://localhost:2379")
 	s.Resolver = &etcdnaming.GRPCResolver{Client: s.Etcd_cli}
 	s.Resolver.Update(context.TODO(), genServicePath(name), naming.Update{Op: naming.Add, Addr: s.Addr, Metadata: "..."})
 
-	s.Svr = grpc.NewServer(grpc.UnaryInterceptor(
+    s.Svr = grpc.NewServer(grpc.UnaryInterceptor(s.itct.serviceInterceptor))
+
+	/*s.Svr = grpc.NewServer(grpc.UnaryInterceptor(
 		func(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (resp interface{}, err error) {
 			if s == nil {
 				panic("s == nil")
 			}
 			ctx = context.WithValue(ctx, Skey, s)
 			Debug(ctx, "--------------------")
+            i.serviceInterceptor(ctx, req, info, handler)
 			return serverInterceptor(ctx, req, info, handler)
-		}))
+		})) */
 
     s.logger = NewLogger(name, "online")
 
@@ -95,11 +102,13 @@ func FetchServiceConn(name string, s *Server) *grpc.ClientConn {
 	}
 
 	b := grpc.RoundRobin(s.Resolver)
+    conn, err := grpc.Dial(sp, grpc.WithBalancer(b), grpc.WithBlock(), grpc.WithInsecure(), grpc.WithUnaryInterceptor(s.itct.clientInterceptor));
+    /*
     conn, err := grpc.Dial(sp, grpc.WithBalancer(b), grpc.WithBlock(), grpc.WithInsecure(), grpc.WithUnaryInterceptor(
         func (ctx context.Context, method string, req, reply interface{}, cc *grpc.ClientConn, invoker grpc.UnaryInvoker, opts ...grpc.CallOption) error {
             ctx = context.WithValue(ctx, Skey, s)
             return callerInterceptor(ctx, method, req, reply, cc, invoker, opts...)
-    }))
+    })) */
     ErrorPanic(err)
     s.ss.LoadOrStore(sp, conn)
 

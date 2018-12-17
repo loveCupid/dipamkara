@@ -12,6 +12,9 @@ type HelloService_svr struct {}
 func RunHelloService() {
 	s := NewServer("HelloService")
 	HelloService_pb.RegisterHelloServiceServer(s.Svr, &HelloService_svr{})
+
+    go HelloService_pb.RunHelloServiceHttp()
+
 	s.Svr.Serve(s.Lis)
 }
 

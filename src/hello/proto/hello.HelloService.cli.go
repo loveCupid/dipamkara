@@ -6,9 +6,7 @@ import (
 )
 
 func Call_HelloService_SayHello(ctx context.Context, in *HelloRequest) (*HelloResponse, error) {
-    s := NewServer("caller")
-	// c := HelloService_pb.NewHelloServiceClient(FetchServiceConnByCtx(ctx, "HelloService"))
-	c := NewHelloServiceClient(FetchServiceConn("HelloService", s))
+	c := NewHelloServiceClient(FetchServiceConnByCtx(ctx, "HelloService"))
 	return c.SayHello(ctx, in)
 }
 

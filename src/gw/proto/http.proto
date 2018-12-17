@@ -1,0 +1,14 @@
+syntax = "proto3";
+package http;
+
+message HttpReq {
+    string body = 1;
+}
+
+message HttpRsp {
+    string reply = 1;
+}
+
+service HttpService {
+    rpc Call(HttpReq) returns (HttpRsp);
+}

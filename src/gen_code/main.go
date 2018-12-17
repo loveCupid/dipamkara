@@ -15,6 +15,7 @@ type method struct {
 }
 
 type service struct {
+    http bool
     name string
     ms []*method
 }
@@ -30,13 +31,112 @@ func error_check(err error) {
     }
 }
 
+func handler_http(p *pb, orgi_file_name string) {
+    for _,s := range p.ss {
+        if !s.http {
+            continue
+        }
+        suffix := fmt.Sprintf(".%s.http.go", s.name)
+        fn := strings.Replace(orgi_file_name, ".proto", suffix, 1)
+        fmt.Println("gen http filename: ", fn)
+
+        f,err := os.OpenFile(fn, os.O_WRONLY | os.O_CREATE | os.O_TRUNC, 0666)
+        error_check(err)
+        defer f.Close()
+        defer f.Sync()
+
+        // package 
+        {
+            f.WriteString(fmt.Sprintf("package %s\n", p.name))
+            f.WriteString("\n")
+        }
+
+        svr_name := s.name// strings.ToLower(s.name)
+        // pb_str := fmt.Sprintf("%s_pb", svr_name)
+
+        // import 
+        {
+            f.WriteString("import (\n")
+            f.WriteString("\t\"context\"\n")
+            f.WriteString("\t. \"reflect\"\n")
+            f.WriteString("\t\"encoding/json\"\n")
+            f.WriteString("\t. \"github.com/loveCupid/dipamkara/src/kernal\"\n")
+            f.WriteString(")\n")
+            f.WriteString("\n")
+        }
+
+        // struct
+        {
+            f.WriteString(fmt.Sprintf("type %s_http struct {\n", svr_name))
+            f.WriteString(fmt.Sprintf("\tc %sClient\n", svr_name))
+            f.WriteString("}\n")
+            f.WriteString("\n")
+        }
+
+        // run method
+        {
+            f.WriteString(fmt.Sprintf("func Run%sHttp() {\n", svr_name))
+            f.WriteString(fmt.Sprintf("\ts  := NewServer(\"%s_http\")\n", svr_name))
+            f.WriteString(fmt.Sprintf("\tsh := new(%s_http)\n", svr_name))
+            f.WriteString(fmt.Sprintf("\tsh.c = New%sClient(FetchServiceConn(\"%s\", s))\n", svr_name, svr_name))
+            f.WriteString(fmt.Sprintf("\tRegisterHttpServiceServer(s.Svr, sh)\n"))
+            f.WriteString("\ts.Svr.Serve(s.Lis)\n")
+            f.WriteString("}\n")
+            f.WriteString("\n")
+        }
+
+        // Call method
+        {
+            call_method_str := `
+            func (s *%s_http) Call(ctx context.Context, in *HttpReq) (*HttpRsp, error) {
+
+                val := TypeOf(s)
+                m,ok := val.MethodByName("Call" + in.Method)
+                if !ok {
+                    Error(ctx, "not found method. method: ", in.Method)
+                    return nil, nil
+                }
+
+                resp := m.Func.Call([]Value{ValueOf(s), ValueOf(ctx), ValueOf(in)})
+
+                // return resp[0].Interface().(*HttpRsp), resp[1].Interface().(error)
+                return resp[0].Interface().(*HttpRsp), nil 
+            }
+            `
+            f.WriteString(fmt.Sprintf(call_method_str, svr_name, ))
+            f.WriteString("\n")
+        }
+
+        // method
+        for _,m := range s.ms {
+            call_method_str := `
+            func (s *%s_http) call%s(ctx context.Context, in *HttpReq) (*HttpRsp, error) {
+
+                var req %s
+                json.Unmarshal([]byte(in.Body), &req)
+
+                resp,err := s.c.%s(ctx, &req)
+                resp_json_str, err := json.Marshal(resp)
+                if err != nil {
+                    return nil, err
+                }
+
+                return &HttpRsp{Reply: string(resp_json_str)}, nil
+            }
+            `
+            f.WriteString(fmt.Sprintf(call_method_str, svr_name, m.name, m.req_type_name, m.name))
+            f.WriteString("\n")
+        }
+    }
+}
+
 func handler_svr(p *pb, orgi_file_name string) {
     for _,s := range p.ss {
         suffix := fmt.Sprintf(".%s.svr.go", s.name)
         fn := strings.Replace(orgi_file_name, ".proto", suffix, 1)
         fmt.Println("gen svr filename: ", fn)
 
-        f,err := os.OpenFile(fn, os.O_WRONLY | os.O_CREATE, 0666)
+        f,err := os.OpenFile(fn, os.O_WRONLY | os.O_CREATE | os.O_TRUNC, 0666)
         error_check(err)
         defer f.Close()
         defer f.Sync()
@@ -55,7 +155,7 @@ func handler_svr(p *pb, orgi_file_name string) {
             f.WriteString("import (\n")
             f.WriteString("\t\"context\"\n")
             f.WriteString("\t. \"github.com/loveCupid/dipamkara/src/kernal\"\n")
-            f.WriteString("\t" + pb_str + " \"github.com/loveCupid/dipamkara/src/hello/proto\"\n")
+            f.WriteString("\t" + pb_str + fmt.Sprintf(" \"github.com/loveCupid/dipamkara/src/%s/proto\"\n", p.name))
             f.WriteString(")\n")
             f.WriteString("\n")
         }
@@ -71,6 +171,9 @@ func handler_svr(p *pb, orgi_file_name string) {
             f.WriteString(fmt.Sprintf("func Run%s() {\n", svr_name))
             f.WriteString(fmt.Sprintf("\ts := NewServer(\"%s\")\n", svr_name))
             f.WriteString(fmt.Sprintf("\t%s.Register%sServer(s.Svr, &%s_svr{})\n", pb_str, svr_name, svr_name))
+            if s.http {
+                f.WriteString(fmt.Sprintf("\tgo %s.Run%sHttp()\n", pb_str, svr_name))
+            }
             f.WriteString("\ts.Svr.Serve(s.Lis)\n")
             f.WriteString("}\n")
             f.WriteString("\n")
@@ -92,7 +195,7 @@ func handler_cli(p *pb, orgi_file_name string) {
         fn := strings.Replace(orgi_file_name, ".proto", suffix, 1)
         fmt.Println("gen cli filename: ", fn)
 
-        f,err := os.OpenFile(fn, os.O_WRONLY | os.O_CREATE, 0666)
+        f,err := os.OpenFile(fn, os.O_WRONLY | os.O_CREATE | os.O_TRUNC, 0666)
         error_check(err)
         defer f.Close()
         defer f.Sync()
@@ -148,6 +251,10 @@ func handler(p *pb) {
     {
         handler_cli(p, orgi_file_name)
     }
+    // gen http
+    {
+        handler_http(p, orgi_file_name)
+    }
 }
 
 func main() {
@@ -163,6 +270,8 @@ func main() {
     defer f.Close()
 
     p := new(pb)
+
+    has_http := false
 
     rd := bufio.NewReader(f)
     for {
@@ -184,6 +293,12 @@ func main() {
             s  = strings.Trim(s, " ")
             p.name = s
         }
+
+        // has http
+        if line == "// outside" {
+            has_http = true
+        }
+
         // service
         if strings.HasPrefix(line, "service ") {
             _service := new(service)
@@ -192,8 +307,12 @@ func main() {
             s  = strings.Trim(s, " ")
             s  = strings.Trim(s, "{")
             s  = strings.Trim(s, " ")
+            _service.http = has_http
             _service.name = s
+
             p.ss = append(p.ss, _service)
+
+            has_http = false
         }
         // method 
         if strings.HasPrefix(line, "rpc ") {
