@@ -19,8 +19,6 @@ Go语言的微服务框架
 
     1. 编写pb协议文件 - 完全基于grpc的pb协议写就可以了。
         例如：./src/hello/proto/hello.proto 文件
-        "// outside" 注释表示下面该服务对外(GW)可见,
-        外部可以通过REST协议，走GW调用到该服务
 
     2. ./auto/gen_code ./src/hello/proto/hello.proto
         通过脚本生成服务所需要的所有文件。
