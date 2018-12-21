@@ -13,4 +13,5 @@ message HelloResponse {
 // outside
 service HelloService {
     rpc SayHello(HelloRequest) returns (HelloResponse);
+    rpc SayHelloV2(HelloRequest) returns (HelloResponse);
 }

@@ -15,6 +15,8 @@ caller:
 	go build -v -o ./bin/$@ ./src/$@
 gw:
 	go build -v -o ./bin/$@ ./src/$@
+test:
+	go build -v -o ./bin/$@ ./src/$@
 gen_code:
 	go build -v -o ./bin/gen_code ./src/gen_code/main.go
 	cp ./bin/gen_code ./auto/

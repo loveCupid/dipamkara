@@ -75,33 +75,43 @@ func handler_http(p *pb, orgi_file_name string) {
 
         // run method
         {
-            f.WriteString(fmt.Sprintf("func Run%sHttp() {\n", svr_name))
-            f.WriteString(fmt.Sprintf("\ts  := NewServer(\"%s_http\")\n", svr_name))
-            f.WriteString(fmt.Sprintf("\tsh := new(%s_http)\n", svr_name))
-            f.WriteString(fmt.Sprintf("\tsh.c = New%sClient(FetchServiceConn(\"%s\", s))\n", svr_name, svr_name))
-            f.WriteString(fmt.Sprintf("\tRegisterHttpServiceServer(s.Svr, sh)\n"))
-            f.WriteString("\ts.Svr.Serve(s.Lis)\n")
-            f.WriteString("}\n")
-            f.WriteString("\n")
+            run_method_str := 
+`
+func Run%sHttp() {
+	s  := NewServer("%s_http")
+	sh := new(%s_http)
+
+    sc, err := FetchServiceConn("%s", s)
+    ErrorPanic(err)
+	sh.c = New%sClient(sc)
+
+	RegisterHttpServiceServer(s.Svr, sh)
+	s.Svr.Serve(s.Lis)
+}
+`
+            f.WriteString(fmt.Sprintf(run_method_str,
+                svr_name, svr_name, svr_name,
+                svr_name, svr_name,
+            ))
         }
 
         // Call method
         {
             call_method_str := `
-            func (s *%s_http) Call(ctx context.Context, in *HttpReq) (*HttpRsp, error) {
+func (s *%s_http) Call(ctx context.Context, in *HttpReq) (*HttpRsp, error) {
 
-                val := TypeOf(s)
-                m,ok := val.MethodByName("Call" + in.Method)
-                if !ok {
-                    Error(ctx, "not found method. method: ", in.Method)
-                    return nil, nil
-                }
+    val := TypeOf(s)
+    m,ok := val.MethodByName("Call" + in.Method)
+    if !ok {
+        Error(ctx, "not found method. method: ", in.Method)
+        return nil, nil
+    }
 
-                resp := m.Func.Call([]Value{ValueOf(s), ValueOf(ctx), ValueOf(in)})
+    resp := m.Func.Call([]Value{ValueOf(s), ValueOf(ctx), ValueOf(in)})
 
-                // return resp[0].Interface().(*HttpRsp), resp[1].Interface().(error)
-                return resp[0].Interface().(*HttpRsp), nil 
-            }
+    // return resp[0].Interface().(*HttpRsp), resp[1].Interface().(error)
+    return resp[0].Interface().(*HttpRsp), nil 
+}
             `
             f.WriteString(fmt.Sprintf(call_method_str, svr_name, ))
             f.WriteString("\n")
@@ -110,19 +120,19 @@ func handler_http(p *pb, orgi_file_name string) {
         // method
         for _,m := range s.ms {
             call_method_str := `
-            func (s *%s_http) call%s(ctx context.Context, in *HttpReq) (*HttpRsp, error) {
+func (s *%s_http) Call%s(ctx context.Context, in *HttpReq) (*HttpRsp, error) {
 
-                var req %s
-                json.Unmarshal([]byte(in.Body), &req)
+    var req %s
+    json.Unmarshal([]byte(in.Body), &req)
 
-                resp,err := s.c.%s(ctx, &req)
-                resp_json_str, err := json.Marshal(resp)
-                if err != nil {
-                    return nil, err
-                }
+    resp,err := s.c.%s(ctx, &req)
+    resp_json_str, err := json.Marshal(resp)
+    if err != nil {
+        return nil, err
+    }
 
-                return &HttpRsp{Reply: string(resp_json_str)}, nil
-            }
+    return &HttpRsp{Reply: string(resp_json_str)}, nil
+}
             `
             f.WriteString(fmt.Sprintf(call_method_str, svr_name, m.name, m.req_type_name, m.name))
             f.WriteString("\n")
@@ -134,6 +144,11 @@ func handler_svr(p *pb, orgi_file_name string) {
     for _,s := range p.ss {
         suffix := fmt.Sprintf(".%s.svr.go", s.name)
         fn := strings.Replace(orgi_file_name, ".proto", suffix, 1)
+
+        farr := strings.Split(fn, "/")
+        farr[len(farr) - 1] = "_" + farr[len(farr) - 1]
+        fn = strings.Join(farr, "/")
+
         fmt.Println("gen svr filename: ", fn)
 
         f,err := os.OpenFile(fn, os.O_WRONLY | os.O_CREATE | os.O_TRUNC, 0666)
@@ -220,13 +235,21 @@ func handler_cli(p *pb, orgi_file_name string) {
 
         // method
         for _,m := range s.ms {
-            f.WriteString(fmt.Sprintf("func Call_%s_%s(ctx context.Context, in *%s) (*%s, error) {\n",
-                svr_name, m.name, m.req_type_name, m.rsp_type_name))
-            f.WriteString(fmt.Sprintf("\tc := New%sClient(FetchServiceConnByCtx(ctx, \"%s\"))\n",
-                svr_name, svr_name))
-            f.WriteString(fmt.Sprintf("\treturn c.%s(ctx, in)\n",m.name))
-            f.WriteString("}\n")
-            f.WriteString("\n")
+            method_str :=
+            `
+func Call_%s_%s(ctx context.Context, in *%s) (*%s, error) {
+    sc, err := FetchServiceConnByCtx(ctx, "%s")
+    if err != nil {
+        Error(ctx, "fetch %s service conn error. ")
+        return nil, err
+    }
+    return New%sClient(sc).%s(ctx, in)
+}
+            `
+            f.WriteString(fmt.Sprintf(method_str,
+                svr_name, m.name, m.req_type_name, m.rsp_type_name,
+                svr_name, svr_name, svr_name, m.name,
+            ))
         }
     }
 }
@@ -237,7 +260,7 @@ func handler(p *pb) {
 
     fmt.Println("package name: ", p.name)
     for _,s := range p.ss {
-        fmt.Println("\tservice: ", s.name)
+        fmt.Println("\tservice: ", s.name, "http: ", s.http)
         for _,m := range s.ms {
             fmt.Println("\t\t", m.name, "(", m.req_type_name, ",", m.rsp_type_name , ")")
         }
@@ -295,7 +318,7 @@ func main() {
         }
 
         // has http
-        if line == "// outside" {
+        if strings.HasPrefix(line, "// outside") {
             has_http = true
         }
 

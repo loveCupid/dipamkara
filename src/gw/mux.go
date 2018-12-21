@@ -12,16 +12,25 @@ import (
 	. "github.com/loveCupid/dipamkara/src/kernal"
 )
 
+type gw_config struct {
+    Port int
+    Services []string
+}
+
 type gw_mux struct {
     s *Server
     ctx context.Context
+    conf *gw_config
 }
 
 func newGWMux() *gw_mux {
     mux := new(gw_mux)
 
     mux.s = NewServer("gw")
+    mux.conf = new(gw_config)
     mux.ctx = context.WithValue(context.Background(), Skey, mux.s)
+
+    WatchConfig(mux.ctx, "gw", mux.conf)
 
     return mux
 }
@@ -70,7 +79,8 @@ func (m gw_mux) extract_service_name_method(r *http.Request) (string,string,erro
 }
 
 func (m gw_mux) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-    Debug(m.ctx, "request: %+v", *r)
+    // Debug(m.ctx, "request: %+v", *r)
+    Debug(m.ctx, "m.conf: %+v", *m.conf)
     // 获取参数
     // 返回是已经转成json的
     str,err := extract_parameter(r)

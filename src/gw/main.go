@@ -2,6 +2,7 @@ package main
 
 import (
     "fmt"
+    "strconv"
     "net/http"
 )
 
@@ -10,7 +11,9 @@ func main() {
 
     g   := newGWMux()
     mux := http.NewServeMux()
-
     mux.Handle("/", *g)
-    http.ListenAndServe(":3000", mux)
+
+
+    fmt.Println("g.conf: ", *g.conf)
+    http.ListenAndServe(":" + strconv.Itoa(g.conf.Port), mux)
 }
