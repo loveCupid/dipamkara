@@ -31,6 +31,15 @@ Go语言的微服务框架
     make xxxx
     例如：make hello
 
+## 启动前配置
+    1. 配置 etcd 的地址：
+        export ETCD_SERVER="http://localhost:6831"
+
+    2. 默认需要一个全局共用配置，默认在etcd的key: /config/__global__ 
+        etcdctl put /config/__global__ "{\"env\": \"online\", \"log_path\":\"/tmp/\", \"jaeger_url\":\"localhost:6831\"}"
+
+    3. 如果某个服务需要特殊的配置，一般在key: /config/{{服务名}}
+        建议服务尽量不做特殊操作
 
 ############## 已有服务作用 ################
 

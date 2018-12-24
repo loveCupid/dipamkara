@@ -10,6 +10,9 @@ export GOPROXY=https://goproxy.io
 export PATH=`pwd`/auto/:$PATH
 echo "start build...$#"
 
+export ETCD_SERVER="http://localhost:2379"
+
 protoc --go_out=plugins=grpc:. hello/hello.proto
 go build .
 mv ./hello
+export ETCDCTL_API=3

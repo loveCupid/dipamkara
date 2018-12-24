@@ -10,6 +10,8 @@ import (
     "net/http"
     "encoding/json"
 	. "github.com/loveCupid/dipamkara/src/kernal"
+    opentracing "github.com/opentracing/opentracing-go"
+    "github.com/opentracing/opentracing-go/ext"
 )
 
 type gw_config struct {
@@ -21,6 +23,7 @@ type gw_mux struct {
     s *Server
     ctx context.Context
     conf *gw_config
+    tracer opentracing.Tracer
 }
 
 func newGWMux() *gw_mux {
@@ -30,7 +33,9 @@ func newGWMux() *gw_mux {
     mux.conf = new(gw_config)
     mux.ctx = context.WithValue(context.Background(), Skey, mux.s)
 
-    WatchConfig(mux.ctx, "gw", mux.conf)
+    WatchConfig("gw", mux.conf)
+    mux.tracer,_,_ = NewJaegerTracer("gw", "localhost:6831")
+	// ErrorPanic(err)
 
     return mux
 }
@@ -106,6 +111,15 @@ func (m gw_mux) ServeHTTP(w http.ResponseWriter, r *http.Request) {
     }
 
     // 调用下游服务的http接口
+    span := m.tracer.StartSpan(
+        _service_name + "/" + _method,
+        // ext.RPCServerOption(spanContext),
+        opentracing.Tag{Key: string(ext.Component), Value: "gRPC"},
+        ext.SpanKindRPCServer,
+    )
+    defer span.Finish()
+
+    m.ctx = opentracing.ContextWithSpan(m.ctx, span)
 	http_rsp,err := Call_HttpService_Call(m.ctx, &http_rep)
     if err != nil {
         Error(m.ctx, "url: %+v, err: %+v", *r.URL, err)

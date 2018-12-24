@@ -29,10 +29,6 @@ type Logger struct {
 	buf_size int
 }
 
-const (
-	prefix = "/tmp/"
-)
-
 func async(item *log_item) {
 	for {
 		select {
@@ -45,13 +41,13 @@ func async(item *log_item) {
 		case m := <-item.msg:
 			{
 				// item.l.Println(m)
-                fmt.Println(m)
+				fmt.Println(m)
 			}
 		}
 	}
 }
 
-func NewLogger(name string, env string) *Logger {
+func NewLogger(name string, env string, prefix string) *Logger {
 	var err error
 	lgr := new(Logger)
 
@@ -59,8 +55,8 @@ func NewLogger(name string, env string) *Logger {
 	lgr.status = 0
 	lgr.buf_size = 9999
 
-    // Mkdir
-    os.Mkdir(prefix + name + "/", 0777)
+	// Mkdir
+	os.Mkdir(prefix+name+"/", 0777)
 
 	{
 		// Debug item
