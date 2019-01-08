@@ -22,7 +22,12 @@ func (s *HelloService_svr) SayHello(ctx context.Context, in *HelloService_pb.Hel
     Debug(ctx, "in.Greeting: %+v, server.addr: %+v\n", in.Greeting, ctx.Value(Skey).(*Server).Addr)
     md, _ := metadata.FromIncomingContext(ctx)
     Error(ctx, "_______traceid: %+v\n", md)
-    return &HelloService_pb.HelloResponse{Reply: "Hello,tish.input: " + in.Greeting}, nil
+
+    val, err := GetRedisCli(ctx, 0).RandomKey().Result()
+    ErrorPanic(err)
+
+    // return &HelloService_pb.HelloResponse{Reply: "Hello,tish.input: " + in.Greeting}, nil
+    return &HelloService_pb.HelloResponse{Reply: "Hello,tish.key: " + val}, nil
 	// return nil, nil
 }
 

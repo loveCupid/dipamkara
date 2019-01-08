@@ -12,6 +12,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/naming"
 
+    "github.com/go-redis/redis"
 	"github.com/coreos/etcd/clientv3"
 	etcdnaming "github.com/coreos/etcd/clientv3/naming"
 	opentracing "github.com/opentracing/opentracing-go"
@@ -37,6 +38,7 @@ type Server struct {
 	itct     *interceptors
 	tracer   opentracing.Tracer
     g_conf   *global_config
+    rc       *redis.Client
 }
 
 func NewServer(name string) *Server {
@@ -81,7 +83,24 @@ func NewServer(name string) *Server {
 	s.tracer, _, err = NewJaegerTracer(name, s.g_conf.Jaeger_url)
 	ErrorPanic(err)
 
+    // init redis
+    s.rc = redis.NewClient(&redis.Options{
+        // Addrs:     []string{"172.18.33.67:6379"},
+        Addr:     "172.18.33.67:6379",
+        Password: "", // no password set
+        // DB:       0,  // use default DB
+        ReadTimeout:  time.Second,
+        WriteTimeout: time.Second,
+    })
+    _, err = s.rc.Ping().Result()
+    ErrorPanic(err)
+
 	return s
+}
+
+func GetRedisCli(ctx context.Context, key uint64) *redis.Client{
+	s := ctx.Value(Skey).(*Server)
+	return s.rc
 }
 
 func genServicePath(s string) string {

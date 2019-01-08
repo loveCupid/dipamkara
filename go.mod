@@ -10,6 +10,7 @@ require (
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible // indirect
 	github.com/etcd-io/etcd v3.3.10+incompatible
 	github.com/ghodss/yaml v1.0.0 // indirect
+	github.com/go-redis/redis v6.14.2+incompatible
 	github.com/gogo/protobuf v1.2.0 // indirect
 	github.com/golang/groupcache v0.0.0-20181024230925-c65c006176ff // indirect
 	github.com/golang/protobuf v1.2.1-0.20181128192352-1d3f30b51784
