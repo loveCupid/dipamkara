@@ -3,9 +3,9 @@ package main
 // server.go
 
 import (
-    "fmt"
-    "encoding/json"
-    pb "github.com/loveCupid/dipamkara/src/hello/proto"
+	"encoding/json"
+	"fmt"
+	pb "github.com/loveCupid/dipamkara/src/hello/proto"
 )
 
 /*
@@ -23,29 +23,27 @@ func (s *server) SayHello(ctx context.Context, in *pb.HelloRequest) (*pb.HelloRe
 */
 
 func main() {
-    var t pb.HelloRequest
-    json.Unmarshal([]byte("{\"greeting\":\"77f888ff\"}"), &t)
-    fmt.Println("t: ", t)
-    RunHelloService()
-    /*ip := kernal.GetValidIP()
-    port := kernal.GetValidPort(ip)
-    fmt.Printf("get valid ip: %s, port: %d\n", ip, port)
+	var t pb.HelloRequest
+	json.Unmarshal([]byte("{\"greeting\":\"77f888ff\"}"), &t)
+	fmt.Println("t: ", t)
+	RunHelloService()
+	/*ip := kernal.GetValidIP()
+	  port := kernal.GetValidPort(ip)
+	  fmt.Printf("get valid ip: %s, port: %d\n", ip, port)
 
-    addr := ip + ":"  + strconv.Itoa(port)
-    fmt.Printf("addr: %s\n", addr)
+	  addr := ip + ":"  + strconv.Itoa(port)
+	  fmt.Printf("addr: %s\n", addr)
 
-    cli, _:= clientv3.NewFromURL("http://localhost:2379")
-    r := &etcdnaming.GRPCResolver{Client: cli}
-    r.Update(context.TODO(), "my-service", naming.Update{Op: naming.Add, Addr: addr, Metadata: "..."})
+	  cli, _:= clientv3.NewFromURL("http://localhost:2379")
+	  r := &etcdnaming.GRPCResolver{Client: cli}
+	  r.Update(context.TODO(), "my-service", naming.Update{Op: naming.Add, Addr: addr, Metadata: "..."})
 
-    lis, err := net.Listen("tcp", addr)
-    if err != nil {
-        log.Fatal("failed to listen: %v", err)
-    }
-    s := grpc.NewServer()
-    s := NewServer("HelloServer")
-    pb.RegisterHelloServiceServer(s.Svr, &server{})
-    s.Svr.Serve(s.Lis)*/
+	  lis, err := net.Listen("tcp", addr)
+	  if err != nil {
+	      log.Fatal("failed to listen: %v", err)
+	  }
+	  s := grpc.NewServer()
+	  s := NewServer("HelloServer")
+	  pb.RegisterHelloServiceServer(s.Svr, &server{})
+	  s.Svr.Serve(s.Lis)*/
 }
-
-

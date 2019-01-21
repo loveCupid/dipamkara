@@ -1,9 +1,9 @@
 package kernal
 
 import (
-    "os"
 	"fmt"
 	"net"
+	"os"
 	"strconv"
 	"sync"
 	"time"
@@ -12,22 +12,22 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/naming"
 
-    "github.com/go-redis/redis"
 	"github.com/coreos/etcd/clientv3"
 	etcdnaming "github.com/coreos/etcd/clientv3/naming"
+	"github.com/go-redis/redis"
 	opentracing "github.com/opentracing/opentracing-go"
 )
 
 const (
-	Skey        = "_server"
+	Skey = "_server"
 )
 
-var ENV         = "online"
+var ENV = "online"
 var ETCD_SERVER = "http://localhost:2379"
 
 type Server struct {
 	name     string
-    etcd_url string
+	etcd_url string
 	Lis      net.Listener
 	Etcd_cli *clientv3.Client
 	Resolver *etcdnaming.GRPCResolver
@@ -37,27 +37,27 @@ type Server struct {
 	logger   *Logger
 	itct     *interceptors
 	tracer   opentracing.Tracer
-    g_conf   *global_config
-    rc       *redis.Client
+	g_conf   *global_config
+	rc       *redis.Client
 }
 
 func NewServer(name string) *Server {
 
-    // alloc new server & interceptor
+	// alloc new server & interceptor
 	s := new(Server)
 	s.name = name
 	s.itct = NewInterceptors(s)
 
-    // init etcd url
-    ETCD_SERVER = os.Getenv("ETCD_SERVER")
-    if ETCD_SERVER == "" {
-        panic("etcd server has not present")
-    }
+	// init etcd url
+	ETCD_SERVER = os.Getenv("ETCD_SERVER")
+	if ETCD_SERVER == "" {
+		panic("etcd server has not present")
+	}
 
-    // init global config
-    s.g_conf = new(global_config)
-    WatchConfig(global_config_name, s.g_conf)
-    ENV = s.g_conf.Env
+	// init global config
+	s.g_conf = new(global_config)
+	WatchConfig(global_config_name, s.g_conf)
+	ENV = s.g_conf.Env
 
 	var err error
 	ip := GetValidIP()
@@ -68,37 +68,37 @@ func NewServer(name string) *Server {
 	port := s.Lis.Addr().(*net.TCPAddr).Port
 	fmt.Println("listen addr: ", ip, ":", port)
 
-    // 在etcd上注册服务
+	// 在etcd上注册服务
 	s.Addr = ip + ":" + strconv.Itoa(port)
 	s.Etcd_cli, err = clientv3.NewFromURL(ETCD_SERVER)
 	s.Resolver = &etcdnaming.GRPCResolver{Client: s.Etcd_cli}
 	s.Resolver.Update(context.TODO(), genServicePath(name), naming.Update{Op: naming.Add, Addr: s.Addr, Metadata: "..."})
 
-    // 初始化日志和grpc服务
+	// 初始化日志和grpc服务
 	s.logger = NewLogger(name, ENV, s.g_conf.Log_path)
 	s.Svr = grpc.NewServer(grpc.UnaryInterceptor(s.itct.serviceInterceptor))
 
-    // init jaeger
+	// init jaeger
 	// s.tracer, _, err = NewJaegerTracer(name, "localhost:6831")
 	s.tracer, _, err = NewJaegerTracer(name, s.g_conf.Jaeger_url)
 	ErrorPanic(err)
 
-    // init redis
-    s.rc = redis.NewClient(&redis.Options{
-        // Addrs:     []string{"172.18.33.67:6379"},
-        Addr:     "172.18.33.67:6379",
-        Password: "", // no password set
-        // DB:       0,  // use default DB
-        ReadTimeout:  time.Second,
-        WriteTimeout: time.Second,
-    })
-    _, err = s.rc.Ping().Result()
-    ErrorPanic(err)
+	// init redis
+	s.rc = redis.NewClient(&redis.Options{
+		// Addrs:     []string{"172.18.33.67:6379"},
+		Addr:     "172.18.33.67:6379",
+		Password: "", // no password set
+		// DB:       0,  // use default DB
+		ReadTimeout:  time.Second,
+		WriteTimeout: time.Second,
+	})
+	_, err = s.rc.Ping().Result()
+	ErrorPanic(err)
 
 	return s
 }
 
-func GetRedisCli(ctx context.Context, key uint64) *redis.Client{
+func GetRedisCli(ctx context.Context, key uint64) *redis.Client {
 	s := ctx.Value(Skey).(*Server)
 	return s.rc
 }
